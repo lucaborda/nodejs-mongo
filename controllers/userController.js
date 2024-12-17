@@ -1,5 +1,14 @@
 const User = require('../models/userModule');
+const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
+
+const filterObj = (obj, ...allowedFields) => {
+  const newObj = {};
+  Object.keys(obj).forEach((el) => {
+    if (allowedFields.includes(el)) newObj[el] = obj[el];
+  });
+  return newObj;
+};
 
 exports.getAllUsers = catchAsync(async (req, res, next) => {
   const users = await User.find();
@@ -11,6 +20,27 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
     },
   });
   next();
+});
+
+exports.updateMe = catchAsync(async (req, res, next) => {
+  if (req.body.password || req.body.passwordConfirm) {
+    return next(
+      new AppError('This rout does not handle password updates', 400),
+    );
+  }
+
+  const filterBody = filterObj(req.body, 'name', 'email');
+  const updatedUser = await User.findByIdAndUpdate(req.user.id, filterBody, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      user: updatedUser,
+    },
+  });
 });
 
 exports.createUser = (req, res) => {
